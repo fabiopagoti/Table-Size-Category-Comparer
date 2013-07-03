@@ -7,11 +7,12 @@ This project contains an ABAP report which compares the number of records from S
 With the result of this report it's possible to check if the table size category definition was done properly or not.
 
 Contributors:
-Arison Ichiwaki
-Fabio Pagoti
 
-Install Instructions
-Coming soon
+- Arison Ichiwaki
 
-Developer Guide
-Comming soon
+- Fabio Pagoti
+
+
+Install Instructions (Coming soon)
+
+Developer Guide (Comming soon)
