@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="utf-8"?>
+<nugget name="TSCC_R2.0">
+ <PROG NAME="Z_TSIZE_CATEGORY_COMPARER" VARCL="X" SUBC="1" RMAND="800" RLOAD="E" FIXPT="X" UCCHECK="X">
+  <textPool>
+   <language SPRAS="E">
+    <textElement ID="I" KEY="001" ENTRY="Tables Selection" LENGTH="16 "/>
+    <textElement ID="I" KEY="002" ENTRY="Table" LENGTH="5 "/>
+    <textElement ID="I" KEY="003" ENTRY="Nº of lines" LENGTH="11 "/>
+    <textElement ID="I" KEY="004" ENTRY="Size Category" LENGTH="13 "/>
+    <textElement ID="I" KEY="005" ENTRY="No Entries" LENGTH="10 "/>
+    <textElement ID="R" ENTRY="Table Size Comparer" LENGTH="19 "/>
+    <textElement ID="S" KEY="RB_ALV" ENTRY="        Display ALV mode" LENGTH="24 "/>
+    <textElement ID="S" KEY="RB_WTE" ENTRY="        Display Write mode" LENGTH="26 "/>
+    <textElement ID="S" KEY="S_TAB" ENTRY="        Tables:" LENGTH="15 "/>
+   </language>
+  </textPool>
+  <source>*&amp;---------------------------------------------------------------------*
+*&amp; Report  Z_ARISON_COMP
+*&amp;
+*&amp;---------------------------------------------------------------------*
+*&amp;
+*&amp;
+*&amp;---------------------------------------------------------------------*
+
+report  z_arison_comp line-size 95
+                      message-id z_g000.
+
+************************************************************************
+* TABLES
+************************************************************************
+tables:
+        dd02l,
+        dd09l.
+
+************************************************************************
+* TYPE-POOLS
+************************************************************************
+type-pools:
+        slis.
+
+************************************************************************
+* TYPES
+************************************************************************
+types:
+        begin of  y_tables,
+          tabname     type tabname,
+          row_num(19) type c,
+          tabkat      type dd09v-tabkat,
+        end of    y_tables.
+
+************************************************************************
+* OBJECTS
+************************************************************************
+data:
+      o_tables    type ref to cl_salv_table,
+      o_columns   type ref to cl_salv_columns_table,
+      o_column    type ref to cl_salv_column,
+      o_function  type ref to cl_salv_functions.
+
+
+************************************************************************
+* TABLES
+************************************************************************
+data:
+        t_tables    type standard table of y_tables,
+        wa_tables   like line of t_tables,
+        t_fcat      type slis_t_fieldcat_alv,
+        wa_fcat     like line of t_fcat,
+        t_dintab    type ref to data.
+
+************************************************************************
+* VARIABLES
+************************************************************************
+data:
+        v_nrow(19)  type c,
+        v_table(30) type c.
+
+************************************************************************
+* TOP-OF-PAGE
+************************************************************************
+top-of-page.
+
+  write:/ sy-uline,
+          sy-vline, text-002, 60 sy-vline, text-003, 74 sy-vline, text-004, 95 sy-vline,
+          sy-uline.
+
+************************************************************************
+* SELECTION SCREEN
+************************************************************************
+
+  selection-screen: begin of block b1 with frame title text-001.
+  select-options: s_tab   for dd02l-tabname obligatory.
+  SELECTION-SCREEN: skip 1.
+  parameters    : rb_alv  radiobutton group rb1,
+                  rb_wte  radiobutton group rb1.
+  selection-screen: end of block b1.
+
+************************************************************************
+* START-OF-SELECTION
+************************************************************************
+start-of-selection.
+
+  perform f_tables_selection.
+
+  if rb_alv eq &apos;X&apos;.
+    perform f_display_alv.
+  else.
+    perform f_display_write.
+  endif.
+
+*&amp;---------------------------------------------------------------------*
+*&amp;      Form  F_TABLES_SELECTION
+*&amp;---------------------------------------------------------------------*
+*       Fill t_tables
+*----------------------------------------------------------------------*
+*  --&gt;  p_tab     - parameter with the name of the table
+*  &lt;--  t_tables  - internal table to save the result of selection
+*----------------------------------------------------------------------*
+form f_tables_selection .
+
+  select tabname
+    from dd02l
+    into table t_tables
+    where tabname  in s_tab     and
+        ( tabclass eq &apos;TRANSP&apos;  or
+          tabclass eq &apos;CLUSTER&apos; OR
+          TABCLASS EQ &apos;POOL&apos;  ).
+
+  loop at t_tables
+    into  wa_tables.
+
+  v_table = wa_tables-tabname.
+
+  create data t_dintab type table of (v_table).
+
+  select count(*)
+    from (v_table)
+    into (v_nrow).
+
+  if v_nrow eq 0.
+    v_nrow = text-005.
+  endif.
+
+  condense v_nrow.
+  wa_tables-row_num = v_nrow.
+
+  select single tabkat
+    from dd09l
+    into (wa_tables-tabkat)
+    where tabname = v_table.
+
+  modify t_tables from wa_tables transporting row_num tabkat.
+
+endloop.
+
+endform.                    &quot; F_TABLES_SELECTION
+*&amp;---------------------------------------------------------------------*
+*&amp;      Form  F_DISPLAY_WRITE.
+*&amp;---------------------------------------------------------------------*
+*       Display selection result to the user
+*----------------------------------------------------------------------*
+*  --&gt;
+*  &lt;--
+*----------------------------------------------------------------------*
+form f_display_write .
+
+  loop at t_tables
+     into wa_tables.
+
+    write:/ sy-uline,
+            sy-vline, wa_tables-tabname, 60 sy-vline, wa_tables-row_num, 74 sy-vline, wa_tables-tabkat, 95 sy-vline.
+  endloop.
+    uline.
+endform.                    &quot; F_DISPLAY_WRITE
+*&amp;---------------------------------------------------------------------*
+*&amp;      Form  F_DISPLAY_ALV
+*&amp;---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  --&gt;  p1        text
+*  &lt;--  p2        text
+*----------------------------------------------------------------------*
+form f_display_alv .
+
+  cl_salv_table=&gt;factory(
+    importing
+      r_salv_table  = o_tables
+    changing
+      t_table       = t_tables ).
+
+  o_columns   = o_tables-&gt;get_columns( ).
+
+  o_column    = o_columns-&gt;get_column( &apos;ROW_NUM&apos; ).
+  o_column-&gt;set_short_text( &apos;No.Lines&apos; ).
+
+  o_function  = o_tables-&gt;get_functions( ).
+  o_function-&gt;set_all( ).
+
+  o_tables-&gt;display( ).
+
+endform.                    &quot; F_DISPLAY_ALV</source>
+ </PROG>
+ <TRAN TCODE="ZTSCC" PGMNA="Z_TSIZE_CATEGORY_COMPARER" DYPNO="1000" CINFO="80">
+  <tstct SPRSL="E" TCODE="ZTSCC" TTEXT="Table Size Category Comparer"/>
+  <tstcc TCODE="ZTSCC" S_WEBGUI="1" S_WIN32="X" S_PLATIN="X"/>
+  <tstcp/>
+  <rsstcd ST_PROG="X" DEVCLASS="$TMP"/>
+ </TRAN>
+</nugget>
