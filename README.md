@@ -13,6 +13,8 @@ Contributors:
 - Fabio Pagoti
 
 
-Install Instructions (Coming soon)
+Install Instructions: https://github.com/fabiopagoti/Table-Size-Category-Comparer/wiki/Installation
+
+Changelog: https://github.com/fabiopagoti/Table-Size-Category-Comparer/wiki/Changelog
 
 Developer Guide (Comming soon)
